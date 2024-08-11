@@ -33,6 +33,7 @@ const client = new MongoClient(uri, {
 
 // manual middleware example - 1
 const logger = (req, res, next) => {
+  console.log('------------logger ------------------------')
   console.log('called', req.hostname, req.originalUrl);
   next();
 };
@@ -40,17 +41,22 @@ const logger = (req, res, next) => {
 // manual middleware example - 2
 const verifyToken = async(req, res, next) => {
   const token = req.cookies?.token;
+  console.log('---------------------------- verify -------------------')
   console.log('value of token in middleWare', token)
+
   if(!token){
     return res.status(401).send({message: 'not authorized'});
   }
+
   //verification
   jwt.verify(token, process.env.TOKEN, (err, decoded) => {
       if(err){
         console.log(err);
         return res.status(401).send({message: 'unauthorized'})
       }
+      req.user = decoded;
       console.log('decoded data', decoded)
+      console.log('----------------------------------------------')
   })
   next();
 }
@@ -85,10 +91,10 @@ async function run() {
           secure: process.env.NODE_ENV === 'production', // Set secure to true in production
           sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Adjust sameSite based on environment
           //secure: process.env.NODE_ENV === 'production', // Set secure to true in production
-          maxAge: 3600000 // 1 hour
+          //maxAge: 3600000 // 1 hour
         })
         .send({success: true})
-    });
+    }); 
 
     // ======================================================
 
@@ -131,7 +137,13 @@ async function run() {
     //this directory use for cookie also
     app.get('/bookings', logger, verifyToken, async(req, res) => {
       console.log('req query email : ', req.query.email)
-      console.log('rec token : ', req.cookies.token);      
+      console.log('rec token : ', req.cookies.token); 
+
+      if(req.query.email != req.user.email){
+        return res.status(403).send({message: 'forbidden access'})
+      }
+
+
       let query = {};
       if (req.query?.brand) {
         query = { brand: req.query.brand };
