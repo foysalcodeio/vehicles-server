@@ -34,13 +34,13 @@ const client = new MongoClient(uri, {
 // manual middleware example - 1
 const logger = (req, res, next) => {
   console.log('------------logger ------------------------')
-  console.log('called', req.hostname, req.originalUrl);
+  console.log('called log info :', req.hostname, req.originalUrl);
   next();
 };
 
 // manual middleware example - 2
 const verifyToken = async(req, res, next) => {
-  const token = req.cookies?.token;
+  const token = req?.cookies?.token;
   console.log('---------------------------- verify -------------------')
   console.log('value of token in middleWare', token)
 
@@ -69,9 +69,11 @@ async function run() {
     const carCollection = client.db('vehicles').collection('bookings');
 
 
+
     // ===================== AUTH ==========================
     // AUTH RELATED API
     // generating json web token
+    // It's used for AuthProvider in useEffect
     app.post('/jwt', logger, async(req, res) => {
         const user = req.body;
         console.log(user);
@@ -85,6 +87,8 @@ async function run() {
 
         // send client site cookie
         // set cookie
+        // first test - res.send(token)
+
         res
         .cookie('token', token, {
           httpOnly: true,
@@ -95,6 +99,14 @@ async function run() {
         })
         .send({success: true})
     }); 
+
+    // logout with cookie clear
+    // calling section from - authprovider
+    app.post('/logout', async(req, res) => {
+        const user = req.body;
+        console.log('logging out', user)
+        res.clearCookie('token', {maxAge: 0}).send({success: true})
+    })
 
     // ======================================================
 
@@ -125,8 +137,8 @@ async function run() {
       res.send(result);
 
     });
-
-  
+    
+    
     app.post('/bookings', async(req, res) => {
       const booking = req.body;
       const result = await carCollection.insertOne(booking);
@@ -135,9 +147,13 @@ async function run() {
 
     
     //this directory use for cookie also
+    // secure this api and directory
     app.get('/bookings', logger, verifyToken, async(req, res) => {
-      console.log('req query email : ', req.query.email)
+      console.log('----------------BOOKING SECTION : generating info ----------------------')
+      console.log('req query email : ', req.query.email);
+      console.log('token owner info : ', req.user);
       console.log('rec token : ', req.cookies.token); 
+      console.log('tok tok token', req.cookies);
 
       if(req.query.email != req.user.email){
         return res.status(403).send({message: 'forbidden access'})
