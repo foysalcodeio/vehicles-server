@@ -49,7 +49,7 @@ const verifyToken = async(req, res, next) => {
   }
 
   //verification
-  jwt.verify(token, process.env.TOKEN, (err, decoded) => {
+  verify(token, process.env.TOKEN, (err, decoded) => {
       if(err){
         console.log(err);
         return res.status(401).send({message: 'unauthorized'})
@@ -82,7 +82,7 @@ async function run() {
           console.error('ACCESS_TOKEN_SECRET is not set');
           return res.status(500).send('Internal server error')
         }
-        const token = jwt.sign(user, process.env.TOKEN, {expiresIn: '3h'})
+        const token = sign(user, process.env.TOKEN, {expiresIn: '3h'})
 
 
         // send client site cookie
@@ -158,8 +158,7 @@ async function run() {
       if(req.query.email != req.user.email){
         return res.status(403).send({message: 'forbidden access'})
       }
-
-
+      
       let query = {};
       if (req.query?.brand) {
         query = { brand: req.query.brand };
