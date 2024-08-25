@@ -8,7 +8,7 @@ const app = express();
 const port = process.env.PORT || 5500;
 
 app.use(cors({
-  origin: ['http://localhost:5173'],
+ origin: ['http://localhost:5173', 'https://vehicles-54ebd.web.app/'],
   credentials: true //that means set cookie
 }));
 app.use(express.json());
