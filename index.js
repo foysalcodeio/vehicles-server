@@ -8,7 +8,12 @@ const app = express();
 const port = process.env.PORT || 5500;
 
 app.use(cors({
- origin: ['http://localhost:5173', 'https://vehicles-54ebd.web.app/'],
+ origin: [
+    'http://localhost:5173',
+   'https://vehicles-54ebd.web.app', 
+   'https://vehicles-54ebd.firebaseapp.com'
+   
+  ],
   credentials: true //that means set cookie
 }));
 app.use(express.json());
@@ -49,7 +54,7 @@ const verifyToken = async(req, res, next) => {
   }
 
   //verification
-  verify(token, process.env.TOKEN, (err, decoded) => {
+  jwt.verify(token, process.env.TOKEN, (err, decoded) => {
       if(err){
         console.log(err);
         return res.status(401).send({message: 'unauthorized'})
@@ -61,9 +66,17 @@ const verifyToken = async(req, res, next) => {
   next();
 }
 
+const cookieOption = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production' ? 'true' : 'false', // Set secure to true in production
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict', // or you can 'lax' Adjust sameSite based on environment
+  // secure: process.env.NODE_ENV === 'production', // Set secure to true in production
+  // maxAge: 3600000 // 1 hour
+}
+
 async function run() {
   try {
-    await client.connect();
+   // await client.connect();
 
     const carInfo = client.db('vehicles').collection('cars');
     const carCollection = client.db('vehicles').collection('bookings');
@@ -76,13 +89,13 @@ async function run() {
     // It's used for AuthProvider in useEffect
     app.post('/jwt', logger, async(req, res) => {
         const user = req.body;
-        console.log(user);
+        console.log('user for token', user);
         const secret = process.env.TOKEN;
         if(!secret){
           console.error('ACCESS_TOKEN_SECRET is not set');
           return res.status(500).send('Internal server error')
         }
-        const token = sign(user, process.env.TOKEN, {expiresIn: '3h'})
+        const token = jwt.sign(user, process.env.TOKEN, {expiresIn: '3h'})
 
 
         // send client site cookie
@@ -90,13 +103,7 @@ async function run() {
         // first test - res.send(token)
 
         res
-        .cookie('token', token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production', // Set secure to true in production
-          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Adjust sameSite based on environment
-          //secure: process.env.NODE_ENV === 'production', // Set secure to true in production
-          //maxAge: 3600000 // 1 hour
-        })
+        .cookie('token', token, cookieOption)
         .send({success: true})
     }); 
 
@@ -105,7 +112,7 @@ async function run() {
     app.post('/logout', async(req, res) => {
         const user = req.body;
         console.log('logging out', user)
-        res.clearCookie('token', {maxAge: 0}).send({success: true})
+        res.clearCookie('token', {...cookieOption, maxAge: 0}).send({success: true})
     })
 
     // ======================================================
@@ -115,6 +122,7 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result);
     });
+
     
     app.get('/cars/:id', async(req, res) => {
       const id = req.params.id;
@@ -184,7 +192,7 @@ async function run() {
       res.send(result);
     });
 
-    await client.db("admin").command({ ping: 1 });
+  //  await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } catch (error) {
     console.error(error);
